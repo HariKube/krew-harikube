@@ -42,6 +42,41 @@ Supported flags:
 
 ## Install
 
+### Download a release with curl
+
+Linux `amd64` example with GNU `sha256sum`:
+
+```bash
+VERSION=v0.1.0
+REPO=HariKube/krew-harikube
+ARCHIVE=kubectl-harikube_linux_amd64.tar.gz
+curl -fsSL -o "${ARCHIVE}" \
+  "https://github.com/${REPO}/releases/download/${VERSION}/${ARCHIVE}"
+curl -fsSL -o checksums.txt \
+  "https://github.com/${REPO}/releases/download/${VERSION}/checksums.txt"
+awk -v file="${ARCHIVE}" '$2 == file { print }' checksums.txt | sha256sum -c -
+tar -xzf "${ARCHIVE}"
+install -m 0755 ./kubectl-harikube ~/.local/bin/kubectl-harikube
+```
+
+Release assets are published for:
+
+- `linux/amd64`
+- `linux/arm64`
+- `darwin/amd64`
+- `darwin/arm64`
+- `windows/amd64`
+- `windows/arm64`
+
+Each release also includes a `checksums.txt` file for verification.
+
+On macOS, use `shasum -a 256` and compare it with the matching line in
+`checksums.txt`.
+
+If you publish releases from a fork, replace `REPO` with your fork path.
+
+### Build locally
+
 Build the plugin binary and place it somewhere on your `PATH` as
 `kubectl-harikube`:
 
