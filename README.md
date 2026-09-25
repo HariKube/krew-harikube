@@ -7,7 +7,7 @@ standard kubectl-style verbs instead of making raw endpoint calls.
 
 - `get` → `kubectl get`
 - `list` → `kubectl get`
-- `watch` → `kubectl get --watch`
+- `watch` → `kubectl get --watch=true`
 - `create` → `kubectl create`
 - `update` → `kubectl apply`
 - `delete` → `kubectl delete`
