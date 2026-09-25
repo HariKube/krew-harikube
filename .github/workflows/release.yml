@@ -115,23 +115,26 @@ jobs:
 
       - name: Check existing release
         id: release_check
-        env:
-          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
 
-          output=""
-          status=0
-          output="$(gh release view "${{ steps.meta.outputs.tag }}" --json url 2>&1)" || status=$?
+          response_file="$(mktemp)"
+          status="$(
+            curl -sS \
+              -o "${response_file}" \
+              -w '%{http_code}' \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${{ steps.meta.outputs.tag }}"
+          )"
 
-          if [ "${status}" -eq 0 ]; then
+          if [ "${status}" = "200" ]; then
             echo "exists=true" >> "${GITHUB_OUTPUT}"
-          elif printf '%s' "${output}" | grep -Eiq 'release not found|HTTP 404'; then
+          elif [ "${status}" = "404" ]; then
             echo "exists=false" >> "${GITHUB_OUTPUT}"
           else
-            printf '%s\n' "${output}" >&2
-            exit "${status}"
+            cat "${response_file}" >&2
+            exit 1
           fi
 
       - name: Publish release
