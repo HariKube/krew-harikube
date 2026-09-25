@@ -1,7 +1,8 @@
 # krew-harikube
 
-This Krew plugin adds a small `kubectl harikube` wrapper so you can use
-standard kubectl-style verbs instead of making raw endpoint calls.
+This Krew plugin adds a thin `kubectl harikube` alias layer over native
+`kubectl` verbs, so you can use standard kubectl-style commands instead of
+making raw endpoint calls yourself.
 
 ## Supported verbs
 
