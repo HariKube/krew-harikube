@@ -28,17 +28,22 @@ func TestBuildKubectlArgs(t *testing.T) {
 		{
 			name: "watch maps to get watch",
 			args: []string{"watch", "pods"},
-			want: []string{"get", "pods", "--watch=true"},
+			want: []string{"get", "--watch=true", "pods"},
 		},
 		{
 			name: "watch preserves extra args",
 			args: []string{"watch", "pods", "-n", "default"},
-			want: []string{"get", "pods", "-n", "default", "--watch=true"},
+			want: []string{"get", "--watch=true", "pods", "-n", "default"},
 		},
 		{
 			name: "watch preserves resource name order",
 			args: []string{"watch", "pod", "my-pod"},
-			want: []string{"get", "pod", "my-pod", "--watch=true"},
+			want: []string{"get", "--watch=true", "pod", "my-pod"},
+		},
+		{
+			name: "watch handles resource name with flags",
+			args: []string{"watch", "pod", "my-pod", "-n", "default"},
+			want: []string{"get", "--watch=true", "pod", "my-pod", "-n", "default"},
 		},
 		{
 			name: "create",
