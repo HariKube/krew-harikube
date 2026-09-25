@@ -46,6 +46,12 @@ jobs:
             exit 1
           fi
 
+          if [[ "${tag}" == *-* ]]; then
+            make_latest="false"
+          else
+            make_latest="true"
+          fi
+
           if git rev-parse "${tag}^{commit}" >/dev/null 2>&1; then
             target_commitish="$(git rev-list -n 1 "${tag}")"
           else
@@ -54,6 +60,7 @@ jobs:
           fi
 
           echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+          echo "make_latest=${make_latest}" >> "${GITHUB_OUTPUT}"
           echo "target_commitish=${target_commitish}" >> "${GITHUB_OUTPUT}"
 
       - name: Check out release target
@@ -119,19 +126,25 @@ jobs:
           tag_name: ${{ steps.meta.outputs.tag }}
           name: ${{ steps.meta.outputs.tag }}
           target_commitish: ${{ steps.meta.outputs.target_commitish }}
-          make_latest: ${{ !contains(steps.meta.outputs.tag, '-') }}
+          make_latest: ${{ steps.meta.outputs.make_latest }}
           generate_release_notes: true
           body: |
             ## Download
 
-            Linux amd64 example:
+            Linux amd64 example with GNU `sha256sum`:
 
             ```bash
             VERSION=${{ steps.meta.outputs.tag }}
-            curl -fsSL -o kubectl-harikube.tar.gz \
-              "https://github.com/${{ github.repository }}/releases/download/${VERSION}/kubectl-harikube_linux_amd64.tar.gz"
-            tar -xzf kubectl-harikube.tar.gz
+            ARCHIVE=kubectl-harikube_linux_amd64.tar.gz
+            curl -fsSL -o "${ARCHIVE}" \
+              "https://github.com/${{ github.repository }}/releases/download/${VERSION}/${ARCHIVE}"
+            curl -fsSL -o checksums.txt \
+              "https://github.com/${{ github.repository }}/releases/download/${VERSION}/checksums.txt"
+            awk -v file="${ARCHIVE}" '$2 == file { print }' checksums.txt | sha256sum -c -
+            tar -xzf "${ARCHIVE}"
             install -m 0755 ./kubectl-harikube ~/.local/bin/kubectl-harikube
             ```
+
+            For macOS, use `shasum -a 256` with the matching entry in `checksums.txt`.
           files: |
             dist/*

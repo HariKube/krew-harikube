@@ -44,7 +44,7 @@ Supported flags:
 
 ### Download a release with curl
 
-Linux `amd64` example:
+Linux `amd64` example with GNU `sha256sum`:
 
 ```bash
 VERSION=v0.1.0
@@ -68,6 +68,9 @@ Release assets are published for:
 - `windows/arm64`
 
 Each release also includes a `checksums.txt` file for verification.
+
+On macOS, use `shasum -a 256` and compare it with the matching line in
+`checksums.txt`.
 
 ### Build locally
 
