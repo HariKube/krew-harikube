@@ -119,10 +119,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          if gh release view "${{ steps.meta.outputs.tag }}" >/dev/null 2>&1; then
+          set -euo pipefail
+
+          output=""
+          status=0
+          output="$(gh release view "${{ steps.meta.outputs.tag }}" --json url 2>&1)" || status=$?
+
+          if [ "${status}" -eq 0 ]; then
             echo "exists=true" >> "${GITHUB_OUTPUT}"
-          else
+          elif printf '%s' "${output}" | grep -Eiq 'release not found|HTTP 404'; then
             echo "exists=false" >> "${GITHUB_OUTPUT}"
+          else
+            printf '%s\n' "${output}" >&2
+            exit "${status}"
           fi
 
       - name: Publish release

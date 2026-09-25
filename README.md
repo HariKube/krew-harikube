@@ -48,11 +48,12 @@ Linux `amd64` example with GNU `sha256sum`:
 
 ```bash
 VERSION=v0.1.0
+REPO=HariKube/krew-harikube
 ARCHIVE=kubectl-harikube_linux_amd64.tar.gz
 curl -fsSL -o "${ARCHIVE}" \
-  "https://github.com/HariKube/krew-harikube/releases/download/${VERSION}/${ARCHIVE}"
+  "https://github.com/${REPO}/releases/download/${VERSION}/${ARCHIVE}"
 curl -fsSL -o checksums.txt \
-  "https://github.com/HariKube/krew-harikube/releases/download/${VERSION}/checksums.txt"
+  "https://github.com/${REPO}/releases/download/${VERSION}/checksums.txt"
 awk -v file="${ARCHIVE}" '$2 == file { print }' checksums.txt | sha256sum -c -
 tar -xzf "${ARCHIVE}"
 install -m 0755 ./kubectl-harikube ~/.local/bin/kubectl-harikube
@@ -71,6 +72,8 @@ Each release also includes a `checksums.txt` file for verification.
 
 On macOS, use `shasum -a 256` and compare it with the matching line in
 `checksums.txt`.
+
+If you publish releases from a fork, replace `REPO` with your fork path.
 
 ### Build locally
 
