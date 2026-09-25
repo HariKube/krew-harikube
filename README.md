@@ -42,6 +42,31 @@ Supported flags:
 
 ## Install
 
+### Download a release with curl
+
+Linux `amd64` example:
+
+```bash
+VERSION=v0.1.0
+curl -fsSL -o kubectl-harikube.tar.gz \
+  "https://github.com/HariKube/krew-harikube/releases/download/${VERSION}/kubectl-harikube_linux_amd64.tar.gz"
+tar -xzf kubectl-harikube.tar.gz
+install -m 0755 ./kubectl-harikube ~/.local/bin/kubectl-harikube
+```
+
+Release assets are published for:
+
+- `linux/amd64`
+- `linux/arm64`
+- `darwin/amd64`
+- `darwin/arm64`
+- `windows/amd64`
+- `windows/arm64`
+
+Each release also includes a `checksums.txt` file for verification.
+
+### Build locally
+
 Build the plugin binary and place it somewhere on your `PATH` as
 `kubectl-harikube`:
 

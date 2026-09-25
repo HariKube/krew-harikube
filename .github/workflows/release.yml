@@ -1,0 +1,120 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to publish, for example v0.1.0
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Resolve release tag
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            tag="${{ inputs.tag }}"
+          else
+            tag="${GITHUB_REF_NAME}"
+          fi
+
+          if [[ ! "${tag}" =~ ^v[0-9]+(\.[0-9]+){2}(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "release tag must look like v0.1.0" >&2
+            exit 1
+          fi
+
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+
+      - name: Run tests
+        run: go test ./...
+
+      - name: Build release archives
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p dist
+
+          while read -r goos goarch; do
+            [ -n "${goos}" ] || continue
+
+            binary_name="kubectl-harikube"
+            archive_name="kubectl-harikube_${goos}_${goarch}"
+            build_dir="$(mktemp -d)"
+
+            if [ "${goos}" = "windows" ]; then
+              binary_name="${binary_name}.exe"
+            fi
+
+            GOOS="${goos}" GOARCH="${goarch}" CGO_ENABLED=0 \
+              go build -trimpath -ldflags="-s -w" -o "${build_dir}/${binary_name}" .
+
+            if [ "${goos}" = "windows" ]; then
+              (
+                cd "${build_dir}"
+                zip -q "${OLDPWD}/dist/${archive_name}.zip" "${binary_name}"
+              )
+            else
+              tar -C "${build_dir}" -czf "dist/${archive_name}.tar.gz" "${binary_name}"
+            fi
+
+            rm -rf "${build_dir}"
+          done <<'EOF'
+          linux amd64
+          linux arm64
+          darwin amd64
+          darwin arm64
+          windows amd64
+          windows arm64
+          EOF
+
+          (
+            cd dist
+            sha256sum ./* > checksums.txt
+          )
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: ${{ steps.meta.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          generate_release_notes: true
+          body: |
+            ## Download
+
+            Linux amd64 example:
+
+            ```bash
+            VERSION=${{ steps.meta.outputs.tag }}
+            curl -fsSL -o kubectl-harikube.tar.gz \
+              "https://github.com/${{ github.repository }}/releases/download/${VERSION}/kubectl-harikube_linux_amd64.tar.gz"
+            tar -xzf kubectl-harikube.tar.gz
+            install -m 0755 ./kubectl-harikube ~/.local/bin/kubectl-harikube
+            ```
+          files: |
+            dist/*
