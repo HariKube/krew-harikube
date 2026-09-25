@@ -8,7 +8,7 @@ making raw endpoint calls yourself.
 
 - `get` → `kubectl get`
 - `list` → `kubectl get`
-- `watch` → `kubectl get --watch=true`
+- `watch` → `kubectl watch`
 - `create` → `kubectl create`
 - `update` → `kubectl apply`
 - `delete` → `kubectl delete`

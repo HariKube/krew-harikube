@@ -49,12 +49,10 @@ func buildKubectlArgs(args []string) ([]string, error) {
 	rest := args[1:]
 
 	switch verb {
-	case "get", "create", "delete":
+	case "get", "watch", "create", "delete":
 		return append([]string{verb}, rest...), nil
 	case "list":
 		return append([]string{"get"}, rest...), nil
-	case "watch":
-		return append([]string{"get", "--watch=true"}, rest...), nil
 	case "update":
 		return append([]string{"apply"}, rest...), nil
 	default:
@@ -69,7 +67,7 @@ func usage() string {
 Supported verbs:
   get     -> kubectl get
   list    -> kubectl get
-  watch   -> kubectl get --watch=true
+  watch   -> kubectl watch
   create  -> kubectl create
   update  -> kubectl apply
   delete  -> kubectl delete
