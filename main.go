@@ -54,7 +54,7 @@ func buildKubectlArgs(args []string) ([]string, error) {
 	case "list":
 		return append([]string{"get"}, rest...), nil
 	case "watch":
-		return append([]string{"get", "--watch=true"}, rest...), nil
+		return append(append([]string{"get"}, rest...), "--watch=true"), nil
 	case "update":
 		return append([]string{"apply"}, rest...), nil
 	default:
