@@ -50,6 +50,9 @@ Linux `amd64` example:
 VERSION=v0.1.0
 curl -fsSL -o kubectl-harikube.tar.gz \
   "https://github.com/HariKube/krew-harikube/releases/download/${VERSION}/kubectl-harikube_linux_amd64.tar.gz"
+curl -fsSL -o checksums.txt \
+  "https://github.com/HariKube/krew-harikube/releases/download/${VERSION}/checksums.txt"
+sha256sum -c --ignore-missing checksums.txt
 tar -xzf kubectl-harikube.tar.gz
 install -m 0755 ./kubectl-harikube ~/.local/bin/kubectl-harikube
 ```
@@ -64,12 +67,6 @@ Release assets are published for:
 - `windows/arm64`
 
 Each release also includes a `checksums.txt` file for verification.
-
-```bash
-curl -fsSL -o checksums.txt \
-  "https://github.com/HariKube/krew-harikube/releases/download/${VERSION}/checksums.txt"
-awk '$2 == "kubectl-harikube_linux_amd64.tar.gz" { print }' checksums.txt | sha256sum -c -
-```
 
 ### Build locally
 
