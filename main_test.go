@@ -2,72 +2,65 @@ package main
 
 import (
 	"errors"
-	"reflect"
+	"strings"
 	"testing"
 )
 
-func TestBuildKubectlArgs(t *testing.T) {
+func TestParseArgs(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name    string
 		args    []string
-		want    []string
+		check   func(t *testing.T, cfg cliConfig)
 		wantErr error
 	}{
 		{
-			name: "get",
-			args: []string{"get", "pods", "-n", "default"},
-			want: []string{"get", "pods", "-n", "default"},
+			name: "get namespaced resource",
+			args: []string{"get", "widgets.example.com", "sample", "-n", "demo"},
+			check: func(t *testing.T, cfg cliConfig) {
+				t.Helper()
+				if cfg.verb != "get" || cfg.resource != "widgets.example.com" || cfg.name != "sample" || cfg.namespace != "demo" {
+					t.Fatalf("unexpected config: %#v", cfg)
+				}
+			},
 		},
 		{
-			name: "list maps to get",
-			args: []string{"list", "deployments"},
-			want: []string{"get", "deployments"},
+			name: "watch selector",
+			args: []string{"watch", "widgets", "-l", "app=test"},
+			check: func(t *testing.T, cfg cliConfig) {
+				t.Helper()
+				if !cfg.watch || cfg.selector != "app=test" {
+					t.Fatalf("unexpected config: %#v", cfg)
+				}
+			},
 		},
 		{
-			name: "watch maps directly",
-			args: []string{"watch", "pods"},
-			want: []string{"watch", "pods"},
+			name: "update with filename",
+			args: []string{"update", "-f", "resource.yaml", "--context", "demo"},
+			check: func(t *testing.T, cfg cliConfig) {
+				t.Helper()
+				if cfg.filename != "resource.yaml" {
+					t.Fatalf("unexpected filename: %#v", cfg)
+				}
+				if len(cfg.globalArgs) != 2 || cfg.globalArgs[0] != "--context" || cfg.globalArgs[1] != "demo" {
+					t.Fatalf("unexpected globals: %#v", cfg.globalArgs)
+				}
+			},
 		},
 		{
-			name: "watch preserves extra args",
-			args: []string{"watch", "pods", "-n", "default"},
-			want: []string{"watch", "pods", "-n", "default"},
-		},
-		{
-			name: "watch preserves resource name order",
-			args: []string{"watch", "pod", "my-pod"},
-			want: []string{"watch", "pod", "my-pod"},
-		},
-		{
-			name: "watch handles resource name with flags",
-			args: []string{"watch", "pod", "my-pod", "-n", "default"},
-			want: []string{"watch", "pod", "my-pod", "-n", "default"},
-		},
-		{
-			name: "create",
-			args: []string{"create", "-f", "manifest.yaml"},
-			want: []string{"create", "-f", "manifest.yaml"},
-		},
-		{
-			name: "update maps to apply",
-			args: []string{"update", "-f", "manifest.yaml"},
-			want: []string{"apply", "-f", "manifest.yaml"},
-		},
-		{
-			name: "delete",
-			args: []string{"delete", "pod", "example"},
-			want: []string{"delete", "pod", "example"},
-		},
-		{
-			name:    "missing verb",
+			name:    "missing args",
 			args:    nil,
 			wantErr: errUsage,
 		},
 		{
-			name:    "unsupported verb",
-			args:    []string{"patch", "pod", "example"},
+			name:    "create missing file",
+			args:    []string{"create"},
+			wantErr: errUsage,
+		},
+		{
+			name:    "unsupported flag",
+			args:    []string{"get", "widgets", "--foo"},
 			wantErr: errUsage,
 		},
 	}
@@ -77,7 +70,7 @@ func TestBuildKubectlArgs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := buildKubectlArgs(tt.args)
+			cfg, err := parseArgs(tt.args)
 			if tt.wantErr != nil {
 				if !errors.Is(err, tt.wantErr) {
 					t.Fatalf("expected error %v, got %v", tt.wantErr, err)
@@ -89,9 +82,101 @@ func TestBuildKubectlArgs(t *testing.T) {
 				t.Fatalf("unexpected error: %v", err)
 			}
 
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Fatalf("got %v, want %v", got, tt.want)
-			}
+			tt.check(t, cfg)
 		})
+	}
+}
+
+func TestResourceMatches(t *testing.T) {
+	t.Parallel()
+
+	resource := apiResource{
+		Name:         "widgets",
+		SingularName: "widget",
+		Kind:         "Widget",
+		ShortNames:   []string{"wdg"},
+	}
+
+	for _, token := range []string{
+		"widgets",
+		"widget",
+		"wdg",
+		"widgets.example.com",
+		"widget.example.com",
+		"wdg.example.com",
+		"widgets.v1.example.com",
+		"widget.v1.example.com",
+		"wdg.v1.example.com",
+	} {
+		if !resourceMatches(token, "example.com", "v1", resource) {
+			t.Fatalf("expected %q to match", token)
+		}
+	}
+
+	if resourceMatches("gadgets", "example.com", "v1", resource) {
+		t.Fatal("did not expect unrelated token to match")
+	}
+}
+
+func TestBuildResourcePath(t *testing.T) {
+	t.Parallel()
+
+	path, err := buildResourcePath(resourceRef{
+		Group:      "example.com",
+		Version:    "v1",
+		Resource:   "widgets",
+		Namespaced: true,
+	}, "demo", false, "sample", "app=test", "metadata.name=sample", true)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := "/apis/example.com/v1/namespaces/demo/widgets/sample?fieldSelector=metadata.name%3Dsample&labelSelector=app%3Dtest&watch=true"
+	if path != want {
+		t.Fatalf("got %q, want %q", path, want)
+	}
+}
+
+func TestBuildResourcePathAllNamespacesError(t *testing.T) {
+	t.Parallel()
+
+	_, err := buildResourcePath(resourceRef{
+		Group:      "example.com",
+		Version:    "v1",
+		Resource:   "widgets",
+		Namespaced: true,
+	}, "", true, "", "", "", false)
+	if !errors.Is(err, errUsage) {
+		t.Fatalf("expected usage error, got %v", err)
+	}
+}
+
+func TestParseManifestMeta(t *testing.T) {
+	t.Parallel()
+
+	manifest, err := parseManifestMeta([]byte(`
+apiVersion: example.com/v1
+kind: Widget
+metadata:
+  name: sample
+  namespace: demo
+`))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if manifest.APIVersion != "example.com/v1" || manifest.Kind != "Widget" || manifest.Metadata.Name != "sample" || manifest.Metadata.Namespace != "demo" {
+		t.Fatalf("unexpected manifest: %#v", manifest)
+	}
+}
+
+func TestUsageMentionsAggregationEndpoints(t *testing.T) {
+	t.Parallel()
+
+	text := usage()
+	for _, needle := range []string{"GET aggregation endpoint", "POST aggregation endpoint", "watch=true"} {
+		if !strings.Contains(text, needle) {
+			t.Fatalf("usage missing %q", needle)
+		}
 	}
 }
