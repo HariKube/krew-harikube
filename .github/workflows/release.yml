@@ -55,6 +55,12 @@ jobs:
           echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
           echo "target_commitish=${target_commitish}" >> "${GITHUB_OUTPUT}"
 
+      - name: Check out release target
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          ref: ${{ steps.meta.outputs.target_commitish }}
+
       - name: Run tests
         run: go test ./...
 
@@ -100,7 +106,7 @@ jobs:
 
           (
             cd dist
-            find . -maxdepth 1 -type f ! -name 'checksums.txt' -print0 \
+            find . -maxdepth 1 -type f ! -name 'checksums.txt' -printf '%P\0' \
               | sort -z \
               | xargs -0 sha256sum > checksums.txt
           )

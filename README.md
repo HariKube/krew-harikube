@@ -68,7 +68,7 @@ Each release also includes a `checksums.txt` file for verification.
 ```bash
 curl -fsSL -o checksums.txt \
   "https://github.com/HariKube/krew-harikube/releases/download/${VERSION}/checksums.txt"
-grep "kubectl-harikube_linux_amd64.tar.gz" checksums.txt | sha256sum -c -
+awk '$2 == "kubectl-harikube_linux_amd64.tar.gz" { print }' checksums.txt | sha256sum -c -
 ```
 
 ### Build locally
