@@ -48,12 +48,13 @@ Linux `amd64` example:
 
 ```bash
 VERSION=v0.1.0
-curl -fsSL -o kubectl-harikube_linux_amd64.tar.gz \
-  "https://github.com/HariKube/krew-harikube/releases/download/${VERSION}/kubectl-harikube_linux_amd64.tar.gz"
+ARCHIVE=kubectl-harikube_linux_amd64.tar.gz
+curl -fsSL -o "${ARCHIVE}" \
+  "https://github.com/HariKube/krew-harikube/releases/download/${VERSION}/${ARCHIVE}"
 curl -fsSL -o checksums.txt \
   "https://github.com/HariKube/krew-harikube/releases/download/${VERSION}/checksums.txt"
-sha256sum -c --ignore-missing checksums.txt
-tar -xzf kubectl-harikube_linux_amd64.tar.gz
+awk -v file="${ARCHIVE}" '$2 == file { print }' checksums.txt | sha256sum -c -
+tar -xzf "${ARCHIVE}"
 install -m 0755 ./kubectl-harikube ~/.local/bin/kubectl-harikube
 ```
 

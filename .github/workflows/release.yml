@@ -107,9 +107,10 @@ jobs:
 
           (
             cd dist
-            find . -maxdepth 1 -type f ! -name 'checksums.txt' -printf '%P\0' \
-              | sort -z \
-              | xargs -0 sha256sum > checksums.txt
+            for asset in *; do
+              [ "${asset}" = "checksums.txt" ] && continue
+              sha256sum "${asset}"
+            done | sort > checksums.txt
           )
 
       - name: Publish release
