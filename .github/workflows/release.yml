@@ -46,12 +46,6 @@ jobs:
             exit 1
           fi
 
-          if [[ "${tag}" == *-* ]]; then
-            make_latest="false"
-          else
-            make_latest="true"
-          fi
-
           if git rev-parse "${tag}^{commit}" >/dev/null 2>&1; then
             target_commitish="$(git rev-list -n 1 "${tag}")"
           else
@@ -60,7 +54,6 @@ jobs:
           fi
 
           echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
-          echo "make_latest=${make_latest}" >> "${GITHUB_OUTPUT}"
           echo "target_commitish=${target_commitish}" >> "${GITHUB_OUTPUT}"
 
       - name: Check out release target
@@ -120,13 +113,26 @@ jobs:
             done | sort > checksums.txt
           )
 
+      - name: Check existing release
+        id: release_check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if gh release view "${{ steps.meta.outputs.tag }}" >/dev/null 2>&1; then
+            echo "exists=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "exists=false" >> "${GITHUB_OUTPUT}"
+          fi
+
       - name: Publish release
+        if: steps.release_check.outputs.exists != 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.meta.outputs.tag }}
           name: ${{ steps.meta.outputs.tag }}
           target_commitish: ${{ steps.meta.outputs.target_commitish }}
-          make_latest: ${{ steps.meta.outputs.make_latest }}
+          make_latest: legacy
           generate_release_notes: true
           body: |
             ## Download
