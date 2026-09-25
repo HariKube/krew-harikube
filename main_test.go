@@ -28,7 +28,7 @@ func TestBuildKubectlArgs(t *testing.T) {
 		{
 			name: "watch maps to get watch",
 			args: []string{"watch", "pods"},
-			want: []string{"get", "--watch", "pods"},
+			want: []string{"get", "pods", "--watch"},
 		},
 		{
 			name: "create",
